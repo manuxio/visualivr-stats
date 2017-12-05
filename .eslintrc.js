@@ -14,12 +14,15 @@ module.exports = {
         "plugin:react/recommended"
     ],
     "parserOptions": {
+        "ecmaVersion": 7,
         "sourceType": "module",
         "ecmaFeatures": {
+          "classes": true,
           "experimentalObjectRestSpread": true,
           "jsx": true
         }
     },
+    "parser": "babel-eslint",
     "rules": {
         "no-console": 0,
         "prefer-const": ["error", {

@@ -1,5 +1,10 @@
 import React, {Component} from 'react';
-// import PropTypes from 'prop-types';
+import { connect } from 'react-redux';
+import { DATASET_CHANGE } from '../../reduxstore/constants/actionTypes';
+import { debounce } from 'throttle-debounce';
+import agent from '../../reduxstore/agent';
+
+import PropTypes from 'prop-types';
 import {
   Nav,
   NavbarBrand,
@@ -16,8 +21,16 @@ import {
 // import HeaderDropdown from './HeaderDropdown';
 
 class Header extends Component {
+  static propTypes = {
+    onLoad: PropTypes.func.isRequired
+  }
+
   constructor(props) {
     super(props);
+    this.state = {};
+    this.debounced = debounce(500, (value) => {
+      console.log('Val', value);
+    });
   }
 
   sidebarToggle(e) {
@@ -38,6 +51,13 @@ class Header extends Component {
   asideToggle(e) {
     e.preventDefault();
     document.body.classList.toggle('aside-menu-hidden');
+  }
+
+  componentWillMount() {
+    this.props.onLoad(Promise.all([
+      agent.requests.get('/asdasd').then(res => res.body)
+    ]));
+    console.log('requests', agent.requests);
   }
 
   render() {
@@ -80,21 +100,39 @@ class Header extends Component {
           }
           <Form action="" method="post" inline>
             <FormGroup>
-              <Label htmlFor="exampleInputName2" className="pr-1">Name</Label>
-              <Input type="text" id="exampleInputName2" placeholder="Jane Doe" required/>
+              <Input type="text" id="exampleInputName2" placeholder="Mandante" onChange={(event) => {
+                const val = event.target.value;
+                this.debounced(val);
+              }} />
             </FormGroup>
             <FormGroup>
-              <Label htmlFor="exampleInputEmail2" className="px-1">Email</Label>
-              <Input type="email" id="exampleInputEmail2" placeholder="jane.doe@example.com" required/>
+              <Label htmlFor="exampleInputEmail2" className="px-1">&nbsp;</Label>
+              <Input type="email" id="exampleInputEmail2" placeholder="Lotto"/>
             </FormGroup>
           </Form>
         </Nav>
+        { /*
         <NavbarToggler className="d-md-down-none" onClick={this.asideToggle}>
           <span className="navbar-toggler-icon"></span>
         </NavbarToggler>
+        */ }
+        <span>&nbsp;</span>
       </header>
     );
   }
 }
 
-export default Header;
+const mapStateToProps = (state, ownProps) => {
+  return {
+    active: ownProps.filter === state.visibilityFilter
+  };
+};
+
+const mapDispatchToProps = dispatch => ({
+  onLoad: (payload, token) =>
+    dispatch({ type: DATASET_CHANGE, payload }),
+  onRedirect: () =>
+    dispatch({ type: REDIRECT })
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(Header);
