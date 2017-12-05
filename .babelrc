@@ -1,4 +1,4 @@
 {
-  "presets": ["es2015", "babel-preset-env", "react"],
-  "plugins": ["transform-object-rest-spread", "transform-class-properties"]
+  "presets": [["es2015", { "modules": false }], "babel-preset-env", "react"],
+  "plugins": ["react-hot-loader/babel", "transform-object-rest-spread", "transform-class-properties"]
 }

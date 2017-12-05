@@ -27,9 +27,11 @@ class Header extends Component {
 
   constructor(props) {
     super(props);
-    this.state = {};
-    this.debounced = debounce(500, (value) => {
-      console.log('Val', value);
+    this.state = {
+      idCliente: ''
+    };
+    this.debounced = debounce(500, () => {
+      console.log('Val', this.state);
     });
   }
 
@@ -100,14 +102,26 @@ class Header extends Component {
           }
           <Form action="" method="post" inline>
             <FormGroup>
-              <Input type="text" id="exampleInputName2" placeholder="Mandante" onChange={(event) => {
-                const val = event.target.value;
-                this.debounced(val);
-              }} />
+              <Input
+                value={this.state.idCliente}
+                type="text" id="idCliente"
+                placeholder="Cliente"
+                onChange={(event) => {
+                  const val = event.target.value;
+                  console.log('New val', val);
+                  this.setState({
+                    idCliente: val
+                  });
+                  this.debounced();
+                }}
+                onBlur={() => {
+                  console.log('Blur');
+                }}
+              />
             </FormGroup>
             <FormGroup>
-              <Label htmlFor="exampleInputEmail2" className="px-1">&nbsp;</Label>
-              <Input type="email" id="exampleInputEmail2" placeholder="Lotto"/>
+              <Label htmlFor="idLotto" className="px-1">&nbsp;</Label>
+              <Input style={{ borderColor: 'black' }} type="text" id="idLotto" placeholder="Lotto"/>
             </FormGroup>
           </Form>
         </Nav>

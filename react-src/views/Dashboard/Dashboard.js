@@ -448,7 +448,7 @@ class Dashboard extends Component {
                     </DropdownMenu>
                   </ButtonDropdown>
                 </ButtonGroup>
-                <h4 className="mb-0">9.823</h4>
+                <h4 className="mb-0">9.824</h4>
                 <p>Members online</p>
               </CardBody>
               <div className="chart-wrapper px-3" style={{height: '70px'}}>
