@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import { DATASET_CHANGE } from '../../reduxstore/constants/actionTypes';
 import { debounce } from 'throttle-debounce';
 import agent from '../../reduxstore/agent';
+import moment from 'moment';
 
 import PropTypes from 'prop-types';
 import {
@@ -12,6 +13,7 @@ import {
   // NavItem,
   // NavLink,
   // Badge,
+  Button,
   Form,
   FormGroup,
   Label,
@@ -22,17 +24,40 @@ import {
 
 class Header extends Component {
   static propTypes = {
-    onLoad: PropTypes.func.isRequired
+    setDataset: PropTypes.func.isRequired,
+    mandato: PropTypes.any,
+    idcliente: PropTypes.any,
+    start: PropTypes.date,
+    end: PropTypes.date
   }
 
   constructor(props) {
     super(props);
+    console.log('Props', props);
     this.state = {
-      idCliente: ''
+      idcliente: props.idcliente,
+      mandato: props.mandato,
+      start: props.start || new Date(),
+      end: props.end || new Date()
     };
-    this.debounced = debounce(500, () => {
-      console.log('Val', this.state);
-    });
+    console.log('This.state', this.state);
+  }
+
+  componentWillReceiveProps(newProps) {
+    console.log('Will Receive New Props', newProps);
+    if (
+      newProps.mandato !== this.state.mandato ||
+      newProps.idcliente !== this.state.idcliente ||
+      typeof newProps.start !== 'undefined' && (newProps.start.toString() !== this.state.start.toString()) ||
+      typeof newProps.end !== 'undefined' && (newProps.end.toString() !== this.state.end.toString())
+    ) {
+      this.setState({
+        mandato: newProps.mandato || '',
+        idcliente: newProps.idcliente || '',
+        start: newProps.start,
+        end: newProps.end
+      });
+    }
   }
 
   sidebarToggle(e) {
@@ -56,10 +81,15 @@ class Header extends Component {
   }
 
   componentWillMount() {
-    this.props.onLoad(Promise.all([
-      agent.requests.get('/asdasd').then(res => res.body)
-    ]));
-    console.log('requests', agent.requests);
+  }
+
+  setDataset() {
+    this.props.setDataset(agent.requests.post('/dataset', {
+      mandato: this.state.mandato,
+      idcliente: this.state.idcliente,
+      start: this.state.start,
+      end: this.state.end
+    }));
   }
 
   render() {
@@ -73,6 +103,64 @@ class Header extends Component {
           <span className="navbar-toggler-icon"></span>
         </NavbarToggler>
         <Nav className="d-md-down-none" navbar>
+          <Form action="" method="post" inline>
+            <FormGroup>
+              <Label htmlFor="idCliente" className="px-1"></Label>
+              <Input value={this.state.idcliente} type="text" id="idCliente" placeholder="Cliente" onChange={(e) => {
+                this.setState({
+                  idcliente: e.target.value
+                });
+              }} />
+            </FormGroup>
+            <FormGroup>
+              <Label htmlFor="idLotto" className="px-1">&nbsp;</Label>
+              <Input value={this.state.mandato} type="text" id="idLotto" placeholder="Mandato" onChange={(e) => {
+                this.setState({
+                  mandato: e.target.value
+                });
+              }} />
+            </FormGroup>
+            <FormGroup>
+              <Label htmlFor="startDate" className="px-1">Inizio</Label>
+              <Input value={moment(this.state.start).format('YYYY-MM-DD')} type="date" name="start" id="startDate" placeholder="datetime placeholder" onChange={(e) => {
+                console.log('Start', e.target.value);
+                let s = moment(e.target.value, 'YYYY-MM-DD').startOf('day').toDate();
+                let end = this.state.end;
+                if (!moment(e.target.value, 'YYYY-MM-DD').isValid()) {
+                  s = '';
+                  end = '';
+                } else if (moment(s).isAfter(end)) {
+                  end = moment(s).endOf('day');
+                }
+                console.log('Setting start', s);
+                this.setState({
+                  start: s,
+                  end
+                });
+              }} />
+              <Label htmlFor="endDate" className="px-1">Fine</Label>
+              <Input value={moment(this.state.end).format('YYYY-MM-DD')} type="date" name="end" id="endDate" placeholder="datetime placeholder" onChange={(e) => {
+                console.log('End', e.target.value);
+                let end = moment(e.target.value, 'YYYY-MM-DD').endOf('day').toDate();
+                let start = this.state.start;
+                if (!moment(e.target.value, 'YYYY-MM-DD').isValid()) {
+                  end = '';
+                  start = '';
+                } else if (moment(end).isBefore(start)) {
+                  start = moment(end).startOf('day');
+                }
+                this.setState({
+                  start,
+                  end
+                });
+              }} />
+            </FormGroup>
+            <FormGroup>
+              <Button type="button" onClick={() => {
+                this.setDataset();
+              }} style={{ marginLeft: '10px' }}>Imposta</Button>
+            </FormGroup>
+          </Form>
           { /*
           <NavItem className="px-3">
             <NavLink href="#">Dashboard</NavLink>
@@ -100,30 +188,6 @@ class Header extends Component {
           <HeaderDropdown/>
             */
           }
-          <Form action="" method="post" inline>
-            <FormGroup>
-              <Input
-                value={this.state.idCliente}
-                type="text" id="idCliente"
-                placeholder="Cliente"
-                onChange={(event) => {
-                  const val = event.target.value;
-                  console.log('New val', val);
-                  this.setState({
-                    idCliente: val
-                  });
-                  this.debounced();
-                }}
-                onBlur={() => {
-                  console.log('Blur');
-                }}
-              />
-            </FormGroup>
-            <FormGroup>
-              <Label htmlFor="idLotto" className="px-1">&nbsp;</Label>
-              <Input style={{ borderColor: 'black' }} type="text" id="idLotto" placeholder="Lotto"/>
-            </FormGroup>
-          </Form>
         </Nav>
         { /*
         <NavbarToggler className="d-md-down-none" onClick={this.asideToggle}>
@@ -136,17 +200,19 @@ class Header extends Component {
   }
 }
 
-const mapStateToProps = (state, ownProps) => {
+const mapStateToProps = (state) => {
+  console.log('mapStateToProps', state);
   return {
-    active: ownProps.filter === state.visibilityFilter
+    mandato: state.dataset.mandato,
+    idcliente: state.dataset.idcliente,
+    end: state.dataset.end,
+    start: state.dataset.start
   };
 };
 
 const mapDispatchToProps = dispatch => ({
-  onLoad: (payload, token) =>
-    dispatch({ type: DATASET_CHANGE, payload }),
-  onRedirect: () =>
-    dispatch({ type: REDIRECT })
+  setDataset: (payload) =>
+    dispatch({ type: DATASET_CHANGE, payload })
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(Header);

@@ -23,7 +23,11 @@ app-root {
   flex: 0 0 $footer-height;
 }
 
-.app-body {
+.spinning .app-footer {
+  display: none;
+}
+
+.app-body, .app-spinner {
   display: flex;
   flex-direction: row;
   flex-grow: 1;
@@ -57,6 +61,12 @@ app-root {
     width: 100%;
   }
   .app-body {
+    margin-top: $navbar-height;
+  }
+}
+
+.header-fixed {
+  .app-spinner {
     margin-top: $navbar-height;
   }
 }

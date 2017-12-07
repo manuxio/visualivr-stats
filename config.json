@@ -1,3 +1,9 @@
 {
-  "httpPort": 4500
+  "httpPort": 4500,
+  "dbConnectionLimit": 2,
+  "dbHost": "10.161.9.152",
+  "dbUser": "node",
+  "dbPassword": "pdNode01!",
+  "dbName": "serfindb",
+  "mongoUrl": "mongodb://10.161.9.38/logs"
 }

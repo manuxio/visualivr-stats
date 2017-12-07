@@ -7,6 +7,7 @@ import redisConnect from 'connect-redis';
 import bodyParser from 'body-parser';
 import moment from 'moment';
 import onFinished from 'on-finished';
+import timedoperations from './timedoperations';
 
 const startUpFunction = () => {
   moment.locale('IT');
@@ -47,7 +48,7 @@ const startUpFunction = () => {
       .then(
         (connection) => {
           if (connection) {
-            // console.log('Got db!', req.ip, res, worker.id);
+            console.log('Got db!', req.ip);
             onFinished(res, () => {
               connection.release();
             });
@@ -96,7 +97,7 @@ const startUpFunction = () => {
         (e) => { next(e); }
       );
   });
-  app.use((err, req, res) => {
+  app.use((err, req, res, next) => { // eslint-disable-line
     if (err) {
       console.log('Error!', err);
       res.status(500).send('Failure');
@@ -104,7 +105,7 @@ const startUpFunction = () => {
       res.status(404).send('Sorry!');
     }
   });
-  app.set('port', config.httpPort);
+  app.set('port', config.httpPort + 1);
   const server = app.listen(app.get('port'), () => {
     console.info(`Web server (single cluster) listening on port ${app.get('port')}`);
   });
@@ -112,3 +113,16 @@ const startUpFunction = () => {
 };
 
 startUpFunction();
+
+console.log('timedoperations', timedoperations);
+
+timedoperations.forEach((op) => {
+  const delay = op.delay;
+  const interval = op.interval;
+  const myFunc = (thisOp) => {
+    thisOp.start().then(() => { setTimeout(() => { myFunc(thisOp); }, interval); }, (err) => { console.log('Err', err); setTimeout(() => { myFunc(thisOp); }, interval); });
+  };
+  setTimeout(() => {
+    myFunc(op);
+  }, delay);
+});

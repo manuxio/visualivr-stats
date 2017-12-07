@@ -1,6 +1,8 @@
 import React, {Component} from 'react';
+import PropTypes from 'prop-types';
 import {Switch, Route, Redirect} from 'react-router-dom';
 import {Container} from 'reactstrap';
+import { connect } from 'react-redux';
 import Header from '../../components/Header/';
 import Sidebar from '../../components/Sidebar/';
 import Breadcrumb from '../../components/Breadcrumb/';
@@ -10,6 +12,10 @@ import Dashboard from '../../views/Dashboard/';
 import StatsDashboard from '../../views/StatsDashboard/';
 import Charts from '../../views/Charts/';
 import Widgets from '../../views/Widgets/';
+
+import { DATASET_CHANGE } from '../../reduxstore/constants/actionTypes';
+import agent from '../../reduxstore/agent';
+
 
 // Components
 import Buttons from '../../views/Components/Buttons/';
@@ -26,11 +32,22 @@ import FontAwesome from '../../views/Icons/FontAwesome/';
 import SimpleLineIcons from '../../views/Icons/SimpleLineIcons/';
 
 class Full extends Component {
+  static propTypes = {
+    datasetLoading: PropTypes.bool,
+    getDataset: PropTypes.func.isRequired
+  }
+
+  componentDidMount() {
+    console.log('this.props', this.props);
+    this.props.getDataset(agent.requests.get('/dataset'));
+  }
+
   render() {
+    const props = this.props;
     return (
-      <div className="app">
+      <div className={`app ${props.datasetLoading ? 'spinning' : ''}`}>
         <Header />
-        <div className="app-body">
+        <div className={`app-body ${props.datasetLoading ? 'd-none' : 'd-block'}`}>
           <Sidebar {...this.props}/>
           <main className="main">
             <Breadcrumb />
@@ -56,10 +73,34 @@ class Full extends Component {
           </main>
           { /* <Aside /> */ }
         </div>
+        <div className={`app-spinner ${ props.datasetLoading ? 'd-block' : 'd-none' }`}>
+          <div className="sk-cube-grid">
+            <div className="sk-cube sk-cube1"></div>
+            <div className="sk-cube sk-cube2"></div>
+            <div className="sk-cube sk-cube3"></div>
+            <div className="sk-cube sk-cube4"></div>
+            <div className="sk-cube sk-cube5"></div>
+            <div className="sk-cube sk-cube6"></div>
+            <div className="sk-cube sk-cube7"></div>
+            <div className="sk-cube sk-cube8"></div>
+            <div className="sk-cube sk-cube9"></div>
+          </div>
+        </div>
         <Footer />
       </div>
     );
   }
 }
 
-export default Full;
+const mapStateToProps = (state/* , ownProps*/) => {
+  return {
+    datasetLoading: state.dataset.changing
+  };
+};
+
+const mapDispatchToProps = dispatch => ({
+  getDataset: (payload) =>
+    dispatch({ type: DATASET_CHANGE, payload })
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(Full);

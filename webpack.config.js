@@ -30,7 +30,13 @@ module.exports = (env = {}) => {
       port: config.httpPort,
       compress: true,
       hot: true,
-      open: true
+      open: true,
+      proxy: {
+        '/api/*': {
+          target: 'http://localhost:' + (config.httpPort + 1),
+          secure: false
+        }
+      }
     },
     module: {
       rules: [

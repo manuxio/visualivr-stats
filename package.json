@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "testdev": "webpack -d --progress --watch --profile --json > compilation-stats.json --env.dev",
     "dev-react-server": "webpack-dev-server --progress --colors --inline --env.dev",
-    "dev-api-server": "babel-watch src/api-server.js",
+    "dev-api-server": "babel-watch api-src/api-server.js",
     "dev": "concurrently --kill-others \"npm run dev-api-server\" \"npm run dev-react-server\""
   },
   "author": "",
@@ -28,6 +28,7 @@
     "history": "^4.7.2",
     "html-webpack-plugin": "^2.30.1",
     "moment": "^2.19.3",
+    "mongodb": "^2.2.33",
     "mysql": "^2.15.0",
     "promise-mysql": "^3.1.3",
     "react": "^16.2.0",
