@@ -41,14 +41,7 @@ class TrafficChart extends Component {
         graphData: null,
         datasetChanged: false
       }, () => {
-        agent.requests.post('/dataset/getTraffic', { mandato, idcliente, start, end }).then(
-          (response) => {
-            console.log('Response', response);
-          },
-          (e) => {
-            console.log('E', e);
-          }
-        );
+        this.reloadData();
       });
     }
   }
@@ -61,19 +54,20 @@ class TrafficChart extends Component {
       end
     } = this.state;
     console.log('TrafficChart', 'Loading data');
-    agent.requests.post('/dataset/getTraffic', { mandato, idcliente, start, end }).then(
+    agent.requests.get('/vivr/openedfiles').then(
       (response) => {
         const kk = ['year', 'month', 'day', 'hour'];
         kk.forEach((k) => {
-          const vals = response[k];
-          vals.forEach((v) => {
-            if (v.x) {
-              console.log('v.x', v.x);
-              v.x = new Date(v.x);
-            }
-          });
+          if (response[k]) {
+            const vals = response[k].data;
+            vals.forEach((v) => {
+              if (v.x) {
+                v.x = new Date(v.x);
+              }
+            });
+          }
         });
-        console.log('response', response);
+        console.log('response', response.day.data);
         this.setState({
           graphData: response
         });
@@ -115,7 +109,6 @@ class TrafficChart extends Component {
     if (!graphData) {
       return (<div>Waiting...</div>);
     }
-    console.log('TrafficChart', graphData.day);
     return (<div className="chart-wrapper" style={{height: 300 + 'px', marginTop: 40 + 'px'}}>
       <Line
         options={{
@@ -143,7 +136,7 @@ class TrafficChart extends Component {
             }],
             yAxes: [{
               scaleLabel: {
-                display: true,
+                display: false,
                 labelString: 'value'
               }
             }]
@@ -157,7 +150,7 @@ class TrafficChart extends Component {
           ],
           datasets: [{
             // label: null,
-            data: graphData.day
+            data: graphData.day.data
           }]
         }}
         height={300}

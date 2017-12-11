@@ -1,2 +1,6 @@
-import Sessions from './sessions.js';
-export default [new Sessions()];
+import VisualIvrSessions from './VisualIvrSessions.js';
+import VisualIvrCodeVerified from './VisualIvrCodeVerified.js';
+export default [
+  new VisualIvrSessions(),
+  new VisualIvrCodeVerified()
+];

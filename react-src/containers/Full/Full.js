@@ -47,7 +47,7 @@ class Full extends Component {
     return (
       <div className={`app ${props.datasetLoading ? 'spinning' : ''}`}>
         <Header />
-        <div className={`app-body ${props.datasetLoading ? 'd-none' : 'd-block'}`}>
+        <div className={`app-body ${props.datasetLoading ? 'opacity50' : ''}`}>
           <Sidebar {...this.props}/>
           <main className="main">
             <Breadcrumb />

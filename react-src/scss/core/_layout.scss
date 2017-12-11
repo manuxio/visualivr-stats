@@ -28,6 +28,7 @@ app-root {
 }
 
 .app-body, .app-spinner {
+  z-index: 1;
   display: flex;
   flex-direction: row;
   flex-grow: 1;
@@ -49,6 +50,15 @@ app-root {
     // $aside-menu-width is the width of the columns
     flex: 0 0 $aside-menu-width;
   }
+}
+
+.app-spinner {
+  z-index: 100;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
 }
 
 //
