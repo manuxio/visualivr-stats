@@ -8,11 +8,16 @@
     "testdev": "webpack -d --progress --watch --profile --json > compilation-stats.json --env.dev",
     "dev-react-server": "webpack-dev-server --progress --colors --inline --env.dev",
     "dev-api-server": "babel-watch api-src/api-server.js",
-    "dev": "concurrently --kill-others \"npm run dev-api-server\" \"npm run dev-react-server\""
+    "dev": "concurrently --kill-others \"npm run dev-api-server\" \"npm run dev-react-server\"",
+    "clean": "rimraf react-production",
+    "build-api-server": "babel api-src --out-dir api-build --copy-files",
+    "build-react": "cross-env npm run clean && webpack --config webpack.production.config.js --progress --profile --colors"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "async": "^2.6.0",
+    "babel-cli": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-preset-env": "^1.6.1",
     "body-parser": "^1.18.2",
@@ -20,6 +25,7 @@
     "chart.js": "^2.7.1",
     "connect-redis": "^3.3.2",
     "copy-webpack-plugin": "^4.2.3",
+    "cross-env": "^5.1.3",
     "ect": "^0.5.9",
     "es6-promise-series": "^0.2.2",
     "express": "^4.16.2",

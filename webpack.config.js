@@ -30,6 +30,7 @@ module.exports = (env = {}) => {
       port: config.httpPort,
       compress: true,
       hot: true,
+      host: '0.0.0.0',
       open: true,
       proxy: {
         '/api/*': {
@@ -110,10 +111,10 @@ module.exports = (env = {}) => {
         }
       ),
       new CopyWebpackPlugin([
-          {from: './react-src/public/img', to: 'img'}
-        ],
-        {copyUnmodified: false}
+        {from: './react-src/public/img', to: 'img'}
+      ],
+      {copyUnmodified: false}
       )
     ]
-  }
+  };
 };

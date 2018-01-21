@@ -1,5 +1,6 @@
 import moment from 'moment';
 import series from 'es6-promise-series';
+import mapLimit from 'async/mapLimit';
 
 export default class BaseOperation {
   constructor() {
@@ -14,7 +15,8 @@ export default class BaseOperation {
       paymentModes: { $each: [] },
       paymentFailed: { $each: [] },
       paymentSucceded: { $each: [] },
-      paymentCompleted: { $each: [] }
+      paymentCompleted: { $each: [] },
+      newFiles: { $each: [] }
     };
   }
 
@@ -44,22 +46,22 @@ export default class BaseOperation {
   }
 
   getTypeByProps(row) {
-    if (typeof row.year === 'undefined') {
+    if (typeof row.year === 'undefined' || row.year === null) {
       return 'alltime';
     }
-    if (typeof row.quarter === 'undefined') {
+    if (typeof row.quarter === 'undefined' || row.quarter === null) {
       return 'year';
     }
-    if (typeof row.month === 'undefined') {
+    if (typeof row.month === 'undefined' || row.month === null) {
       return 'quarter';
     }
-    if (typeof row.week === 'undefined') {
+    if (typeof row.week === 'undefined' || row.week === null) {
       return 'month';
     }
-    if (typeof row.day === 'undefined') {
+    if (typeof row.day === 'undefined' || row.day === null) {
       return 'week';
     }
-    if (typeof row.hour === 'undefined') {
+    if (typeof row.hour === 'undefined' | row.hour === null) {
       return 'day';
     }
     return 'hour';
@@ -142,6 +144,7 @@ export default class BaseOperation {
       },
       allowDiskUse: true
     };
+    // if (this.debug) console.log('aggregateQuery', JSON.stringify(aggregateQuery));
     req.mongodb.collection('visualivr')
       .aggregate(aggregateQuery,
         aggregateOptions
@@ -174,21 +177,38 @@ export default class BaseOperation {
         .then( // Get max/min id
           ({ configuration }) => {
             const minId = configuration.maxId || 0;
+            const minDate = configuration.maxDate || moment('01-01-1970', 'MM-DD-YYYY').toDate();
             return mysql.query(`SELECT max(id) as maxId from ${this.logTable}`)
               .then(
                 (results) => {
                   const maxId = results && results[0] ? results[0].maxId : 0;
-                  return Promise.resolve({ mysql, configuration, minId, maxId });
+                  return Promise.resolve({ mysql, configuration, minId, maxId, minDate });
+                },
+                (e) => Promise.reject(e)
+              )
+              .then(
+                (result) => {
+                  if (!this.dateColumn || this.dateColumn.length < 1) {
+                    return Promise.resolve({ ...result, maxDate: moment().toDate() });
+                  }
+                  console.log('This module has a date column!');
+                  return mysql.query(`SELECT max(${this.dateColumn}) as maxDate from ${this.logTable}`)
+                    .then(
+                      (results) => {
+                        const maxDate = results && results[0] ? results[0].maxDate : moment('01-01-1970', 'MM-DD-YYYY').toDate();
+                        return Promise.resolve({ maxDate, ...result });
+                      },
+                      (e) => Promise.reject(e)
+                    );
                 },
                 (e) => Promise.reject(e)
               );
-            // return Promise.resolve({ mysql, configuration, lastId });
           },
           (e) => Promise.reject(e)
         )
         .then( // Create and run mysql queries
-          ({ minId, maxId, ...rest }) => {
-            const queries = this.getQueries(mysql, minId, maxId);
+          ({ minId, maxId, minDate, maxDate, ...rest }) => {
+            const queries = this.getQueries(mysql, minId, maxId, minDate, maxDate);
             const getQueryFunctions = queries.map((q, pos) => {
               return () => {
                 // console.log('Query', q);
@@ -207,7 +227,7 @@ export default class BaseOperation {
             return series(getQueryFunctions)
               .then(
                 (arrayOfRowsArray) => {
-                  return Promise.resolve({ mysql, minId, maxId, queries, arrayOfRowsArray, ...rest });
+                  return Promise.resolve({ mysql, minId, maxId, minDate, maxDate, queries, arrayOfRowsArray, ...rest });
                 },
                 (e) => Promise.reject(e)
               );
@@ -219,6 +239,9 @@ export default class BaseOperation {
             const mongoUpsertOps = arrayOfRowsArray.reduce((prev, rowsArray, queryPosition) => {
               const period = rowsArray[0] ? this.getTypeByProps(rowsArray[0]) : null;
               rowsArray.forEach((row) => {
+                // if (this.debug) {
+                //   console.log('Row', row);
+                // }
                 const updateOptions = {
                   upsert: true
                 };
@@ -301,38 +324,83 @@ export default class BaseOperation {
                 }
                 updateDoc.$set.start = start;
                 updateDoc.$set.end = end;
-                prev.push(
-                  mongoDb.collection(this.targetCollection)
-                    .updateOne(searchDoc, updateDoc, updateOptions)
-                    .then(
-                      (writeOp) => {
-                        if (writeOp.modifiedCount + writeOp.upsertedCount !== 1) {
-                          console.info('[Visual IVR Sessions] Write failed on query', searchDoc, updateDoc, queries[queryPosition], row);
-                        }
-                        return Promise.resolve(writeOp);
-                      },
-                      (e) => Promise.reject(e)
-                    )
-                );
+                if (period === 'week') {
+                  delete searchDoc.month;
+                }
+                // if (this.debug) {
+                //   console.log('row', row);
+                //   console.log('searchDoc', searchDoc);
+                //   console.log('updateDoc', updateDoc);
+                // }
+                // prev.push(
+                //   mongoDb.collection(this.targetCollection)
+                //     .updateOne(searchDoc, updateDoc, updateOptions)
+                //     .then(
+                //       (writeOp) => {
+                //         // if (writeOp.upsertedCount === 1 && period === 'week') {
+                //         //   console.log('Created doc', searchDoc, row, queries[queryPosition]);
+                //         // }
+                //         if (writeOp.modifiedCount + writeOp.upsertedCount !== 1) {
+                //           console.info('[Visual IVR Sessions] Write failed on query', searchDoc, updateDoc, queries[queryPosition], row);
+                //         }
+                //         return Promise.resolve(writeOp);
+                //       },
+                //       (e) => Promise.reject(e)
+                //     )
+                // );
+                prev.push([searchDoc, updateDoc, updateOptions, queries[queryPosition], row]);
               });
               return prev;
             }, []);
             console.info(`[Visual IVR Sessions] Running ${mongoUpsertOps.length} mongodb upserts`);
-            return Promise.all(mongoUpsertOps)
-              .then(
-                () => {
-                  return Promise.resolve({ mysql, ...rest});
-                },
-                (e) => Promise.reject(e)
-              );
+            return new Promise((innerResolve, innerReject) => {
+              mapLimit(mongoUpsertOps, 20, ([searchDoc, updateDoc, updateOptions, mysqlQuery, row], done) => {
+                // console.log('Starting query', searchDoc, updateDoc, updateOptions);
+                mongoDb.collection(this.targetCollection)
+                  .updateOne(searchDoc, updateDoc, updateOptions)
+                  .then(
+                    (writeOp) => {
+                      // if (writeOp.upsertedCount === 1 && period === 'week') {
+                      //   console.log('Created doc', searchDoc, row, queries[queryPosition]);
+                      // }
+                      if (writeOp.modifiedCount + writeOp.upsertedCount !== 1) {
+                        console.info('[Visual IVR Sessions] Write failed on query', searchDoc, updateDoc, mysqlQuery, row);
+                        done('Query failed!');
+                      } else {
+                        // console.log('Qc', qc++, '/', mongoUpsertOps.length);
+                        done(null, writeOp);
+                      }
+                    },
+                    (e) => {
+                      done(e);
+                    }
+                  );
+              }, (err) => {
+                if (err) {
+                  innerReject(err);
+                } else {
+                  innerResolve({ mysql, ...rest});
+                }
+              });
+            });
+            // mapLimit
+            // return Promise.all(mongoUpsertOps)
+            //   .then(
+            //     () => {
+            //       return Promise.resolve({ mysql, ...rest});
+            //     },
+            //     (e) => Promise.reject(e)
+            //   );
           },
           (e) => Promise.reject(e)
         )
         .then( // Update configuration
-          ({ configuration, maxId, minId, ...rest }) => {
+          ({ configuration, maxId, minId, minDate, maxDate, ...rest }) => {
             configuration.name = this.confName;
             configuration.maxId = maxId;
             configuration.minId = minId;
+            configuration.minDate = minDate;
+            configuration.maxDate = maxDate;
             configuration.lastRun = new Date();
             return mongoDb.collection(this.confCollection)
               .updateOne(
@@ -362,5 +430,66 @@ export default class BaseOperation {
     });
     // console.log('Starting....', mysqlPool);
     // return Promise.resolve();
+  }
+
+  getQueries(mysql, minId, maxId) {
+    const baseAndClause = this.getBaseAndClause(mysql, minId, maxId);
+    const baseSearch = 'idcontratto as myvalue';
+    const baseSelect = `SELECT ${baseSearch} `;
+    const baseFrom = `FROM ${this.logTable}`;
+    // const splits = ['', 'idcliente', 'mandato'];
+    const subsplits = [
+      {
+        group: 'YEAR(data_inserimento)',
+        select: 'YEAR(data_inserimento) as year'
+      },
+      {
+        group: 'QUARTER(data_inserimento)',
+        select: 'QUARTER(data_inserimento) as quarter'
+      },
+      {
+        group: 'MONTH(data_inserimento)',
+        select: 'MONTH(data_inserimento) as month'
+      },
+      {
+        group: 'WEEKOFYEAR(data_inserimento)',
+        select: 'WEEKOFYEAR(data_inserimento) as week'
+      },
+      {
+        group: 'DAY(data_inserimento)',
+        select: 'DAY(data_inserimento) as day'
+      }
+    ];
+    const queries = [];
+    // Base queries
+    queries.push(`${baseSelect} ${baseFrom} WHERE ${baseAndClause} GROUP BY idcontratto`);
+    let subSelect = '';
+    let subGroup = 'GROUP BY idcontratto';
+    subsplits.forEach((split) => {
+      subSelect += `, ${split.select}`;
+      subGroup += `, ${split.group}`;
+      queries.push(`${baseSelect} ${subSelect} ${baseFrom} WHERE ${baseAndClause} ${subGroup} `);
+    });
+
+    // Split on idcliente
+    queries.push(`${baseSelect}, idcliente ${baseFrom} WHERE ${baseAndClause} GROUP BY idcontratto, idcliente `);
+    subSelect = '';
+    subGroup = 'GROUP BY idcontratto, idcliente';
+    subsplits.forEach((split) => {
+      subSelect += `, ${split.select}`;
+      subGroup += `, ${split.group}`;
+      queries.push(`${baseSelect}, idcliente ${subSelect} ${baseFrom} WHERE ${baseAndClause} ${subGroup} `);
+    });
+
+    // Split on mandato
+    queries.push(`${baseSelect}, idcliente, mandato ${baseFrom} WHERE ${baseAndClause} GROUP BY idcontratto, idcliente, mandato `);
+    subSelect = '';
+    subGroup = 'GROUP BY idcontratto, idcliente, mandato';
+    subsplits.forEach((split) => {
+      subSelect += `, ${split.select}`;
+      subGroup += `, ${split.group}`;
+      queries.push(`${baseSelect}, idcliente, mandato ${subSelect} ${baseFrom} WHERE ${baseAndClause} ${subGroup} `);
+    });
+    return queries;
   }
 }

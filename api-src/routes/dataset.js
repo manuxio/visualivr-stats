@@ -33,7 +33,7 @@ router.post('/dataset', (req, res) => {
   } = body;
   const session = req.session;
   session.mandato = mandato;
-  session.idcliente = parseInt(idcliente, 10) * 3;
+  session.idcliente = parseInt(idcliente, 10);
   if (start) {
     session.start = moment(start).startOf('day').toDate();
   }

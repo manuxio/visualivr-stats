@@ -114,7 +114,7 @@ const startUpFunction = () => {
 
 startUpFunction();
 
-console.log('timedoperations', timedoperations);
+// console.log('timedoperations', timedoperations);
 
 timedoperations.forEach((op) => {
   const delay = op.delay;

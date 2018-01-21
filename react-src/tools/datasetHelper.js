@@ -2,8 +2,8 @@ const isDatasetChanged = (newProps, state) => {
   if (
     newProps.mandato !== state.mandato ||
     newProps.idcliente !== state.idcliente ||
-    typeof newProps.start !== 'undefined' && (newProps.start.toString() !== state.start.toString()) ||
-    typeof newProps.end !== 'undefined' && (newProps.end.toString() !== state.end.toString())
+    typeof newProps.start !== 'undefined' && (!state.start || newProps.start.toString() !== state.start.toString()) ||
+    typeof newProps.end !== 'undefined' && (!state.end || newProps.end.toString() !== state.end.toString())
   ) {
     return true;
   }

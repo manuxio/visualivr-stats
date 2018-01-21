@@ -1,0 +1,6 @@
+{
+  "name": "TimeChart",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./TimeChart.js"
+}

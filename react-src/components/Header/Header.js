@@ -44,19 +44,22 @@ class Header extends Component {
   }
 
   componentWillReceiveProps(newProps) {
-    console.log('Will Receive New Props', newProps);
+    console.log('Will Receive New Props at header!', newProps);
     if (
       newProps.mandato !== this.state.mandato ||
       newProps.idcliente !== this.state.idcliente ||
-      typeof newProps.start !== 'undefined' && (newProps.start.toString() !== this.state.start.toString()) ||
-      typeof newProps.end !== 'undefined' && (newProps.end.toString() !== this.state.end.toString())
+      typeof newProps.start !== 'undefined' && (!this.state.start || newProps.start.toString() !== this.state.start.toString()) ||
+      typeof newProps.end !== 'undefined' && (!this.state.end || newProps.end.toString() !== this.state.end.toString())
     ) {
+      console.log('Setting state!');
       this.setState({
         mandato: newProps.mandato || '',
         idcliente: newProps.idcliente || '',
         start: newProps.start,
         end: newProps.end
       });
+    } else {
+      console.log('Not setting state!');
     }
   }
 
