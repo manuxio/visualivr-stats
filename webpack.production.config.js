@@ -17,7 +17,7 @@ const config = {
 
   output: {
     filename: 'bundle.js',
-    path: resolve(__dirname, 'react-production'),
+    path: resolve(__dirname, 'react-build'),
     publicPath: ''
   },
 

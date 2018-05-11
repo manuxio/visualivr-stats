@@ -10,6 +10,7 @@ class VisualIvrSuccededPayments extends BaseOperation {
     // this.searchString = 'Codice verificato per record %';
     this.confName = 'visualIvrSuccededPaymentTransactionsIndexer';
     this.mainProp = 'paymentSucceded';
+    this.dateBased = true;
     this.dateColumn = 'updatetime';
     this.delay = 30000;
     this.interval = 100000;

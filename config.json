@@ -5,5 +5,5 @@
   "dbUser": "node",
   "dbPassword": "pdNode01!",
   "dbName": "serfindb",
-  "mongoUrl": "mongodb://127.0.0.1/logs"
+  "mongoUrl": "mongodb://127.0.0.1/stats"
 }

@@ -53,7 +53,6 @@ class VisualIvrSessions extends BaseOperation {
         if (mandato) {
           searchDoc.mandato = mandato;
         }
-        console.log('SearchDoc', searchDoc);
         req.mongodb.collection('visualivr')
           .findOne(searchDoc)
           .then(

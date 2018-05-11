@@ -1,6 +1,9 @@
 # Distribution files
 dist/
 
+api-build/
+react-production/
+
 # Logs
 logs
 *.log

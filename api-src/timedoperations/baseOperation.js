@@ -7,7 +7,8 @@ export default class BaseOperation {
     this.delay = 10000;
     this.interval = 100000;
     this.name = 'BaseOperation';
-    this.allVisualIvrIncrementalProps = {
+    this.opType = 'addToSet';
+    this.allVisualIvrAddToSetProps = {
       sessions: { $each: [] },
       verifiedCodes: { $each: [] },
       verifiedIdentities: { $each: [] },
@@ -15,8 +16,10 @@ export default class BaseOperation {
       paymentModes: { $each: [] },
       paymentFailed: { $each: [] },
       paymentSucceded: { $each: [] },
-      paymentCompleted: { $each: [] },
-      newFiles: { $each: [] }
+      paymentCompleted: { $each: [] }
+    };
+    this.allVisualIvrIncProps = {
+      sessions: 0
     };
   }
 
@@ -188,7 +191,7 @@ export default class BaseOperation {
               )
               .then(
                 (result) => {
-                  if (!this.dateColumn || this.dateColumn.length < 1) {
+                  if (!this.dateBased || (!this.dateColumn || this.dateColumn.length < 1)) {
                     return Promise.resolve({ ...result, maxDate: moment().toDate() });
                   }
                   console.log('This module has a date column!');
@@ -248,6 +251,7 @@ export default class BaseOperation {
                 const searchDoc = {
                   idcliente: { $exists: false },
                   mandato: { $exists: false },
+                  cluster: { $exists: false },
                   year: { $exists: false },
                   quarter: { $exists: false },
                   month: { $exists: false },
@@ -256,16 +260,40 @@ export default class BaseOperation {
                   hour: { $exists: false },
                   period
                 };
+                // const updateDoc = {
+                //   $addToSet: {
+                //     ...this.allVisualIvrAddToSetProps,
+                //     ...(row.myvalue ? { [this.mainProp]: row.myvalue } : {})
+                //   },
+                //   $set: {
+                //     period
+                //   }
+                // };
                 const updateDoc = {
                   $addToSet: {
-                    ...this.allVisualIvrIncrementalProps,
-                    ...(row.myvalue ? { [this.mainProp]: row.myvalue } : {})
+                    ...this.allVisualIvrAddToSetProps
+                  },
+                  $inc: {
+                    ...this.allVisualIvrIncProps
                   },
                   $set: {
                     period
                   }
                 };
-                const keys = ['idcliente', 'mandato', 'year', 'quarter', 'month', 'week', 'day', 'hour'];
+                if (this.opType === 'addToSet') {
+                  if (row.myvalue) {
+                    updateDoc.$addToSet[this.mainProp] = row.myvalue;
+                  } else {
+                    delete updateDoc.$addToSet[this.mainProp];
+                  }
+                }
+                if (this.opType === 'inc') {
+                  if (row.myvalue) {
+                    updateDoc.$inc[this.mainProp] = row.myvalue || 0;
+                  }
+                }
+                console.log('UpdateDoc', updateDoc);
+                const keys = ['idcliente', 'mandato', 'cluster', 'year', 'quarter', 'month', 'week', 'day', 'hour'];
                 keys.forEach((k) => {
                   if (typeof row[k] !== 'undefined' && row[k] !== null) {
                     if (row[k] === null) {
@@ -327,27 +355,6 @@ export default class BaseOperation {
                 if (period === 'week') {
                   delete searchDoc.month;
                 }
-                // if (this.debug) {
-                //   console.log('row', row);
-                //   console.log('searchDoc', searchDoc);
-                //   console.log('updateDoc', updateDoc);
-                // }
-                // prev.push(
-                //   mongoDb.collection(this.targetCollection)
-                //     .updateOne(searchDoc, updateDoc, updateOptions)
-                //     .then(
-                //       (writeOp) => {
-                //         // if (writeOp.upsertedCount === 1 && period === 'week') {
-                //         //   console.log('Created doc', searchDoc, row, queries[queryPosition]);
-                //         // }
-                //         if (writeOp.modifiedCount + writeOp.upsertedCount !== 1) {
-                //           console.info('[Visual IVR Sessions] Write failed on query', searchDoc, updateDoc, queries[queryPosition], row);
-                //         }
-                //         return Promise.resolve(writeOp);
-                //       },
-                //       (e) => Promise.reject(e)
-                //     )
-                // );
                 prev.push([searchDoc, updateDoc, updateOptions, queries[queryPosition], row]);
               });
               return prev;
@@ -432,63 +439,75 @@ export default class BaseOperation {
     // return Promise.resolve();
   }
 
-  getQueries(mysql, minId, maxId) {
-    const baseAndClause = this.getBaseAndClause(mysql, minId, maxId);
-    const baseSearch = 'idcontratto as myvalue';
-    const baseSelect = `SELECT ${baseSearch} `;
-    const baseFrom = `FROM ${this.logTable}`;
-    // const splits = ['', 'idcliente', 'mandato'];
-    const subsplits = [
+  getBaseSearch() {
+    return this.baseSearch || 'idcontratto as myvalue';
+  }
+
+  getBaseSelect() {
+    return `SELECT ${this.getBaseSearch()} `;
+  }
+
+  getBaseFrom() {
+    return `FROM ${this.logTable}`;
+  }
+
+  getSubSplits() {
+    const datekey = this.dateColumn || 'data_inserimento';
+    return this.subplits || [
       {
-        group: 'YEAR(data_inserimento)',
-        select: 'YEAR(data_inserimento) as year'
+        group: `YEAR(${datekey})`,
+        select: `YEAR(${datekey}) as year`
       },
       {
-        group: 'QUARTER(data_inserimento)',
-        select: 'QUARTER(data_inserimento) as quarter'
+        group: `QUARTER(${datekey})`,
+        select: `QUARTER(${datekey}) as quarter`
       },
       {
-        group: 'MONTH(data_inserimento)',
-        select: 'MONTH(data_inserimento) as month'
+        group: `MONTH(${datekey})`,
+        select: `MONTH(${datekey}) as month`
       },
       {
-        group: 'WEEKOFYEAR(data_inserimento)',
-        select: 'WEEKOFYEAR(data_inserimento) as week'
+        group: `WEEKOFYEAR(${datekey})`,
+        select: `WEEKOFYEAR(${datekey}) as week`
       },
       {
-        group: 'DAY(data_inserimento)',
-        select: 'DAY(data_inserimento) as day'
+        group: `DAY(${datekey})`,
+        select: `DAY(${datekey}) as day`
+      },
+      {
+        group: `HOUR(${datekey})`,
+        select: `HOUR(${datekey}) as hour`
       }
     ];
+  }
+
+  getMainSplits() {
+    return this.mainSplits || [
+      ['idcontratto'],
+      ['idcontratto', 'idcliente'],
+      ['idcontratto', 'idcliente', 'mandato']
+    ];
+  }
+
+  getQueries(mysql, minId, maxId, minDate, maxDate) {
+    const baseAndClause = this.getBaseAndClause(mysql, minId, maxId, minDate, maxDate);
+    const baseSelect = this.getBaseSelect();
+    const baseFrom = this.getBaseFrom();
+    const mainSplits = this.getMainSplits();
+    const subSplits = this.getSubSplits();
+
     const queries = [];
-    // Base queries
-    queries.push(`${baseSelect} ${baseFrom} WHERE ${baseAndClause} GROUP BY idcontratto`);
-    let subSelect = '';
-    let subGroup = 'GROUP BY idcontratto';
-    subsplits.forEach((split) => {
-      subSelect += `, ${split.select}`;
-      subGroup += `, ${split.group}`;
-      queries.push(`${baseSelect} ${subSelect} ${baseFrom} WHERE ${baseAndClause} ${subGroup} `);
-    });
-
-    // Split on idcliente
-    queries.push(`${baseSelect}, idcliente ${baseFrom} WHERE ${baseAndClause} GROUP BY idcontratto, idcliente `);
-    subSelect = '';
-    subGroup = 'GROUP BY idcontratto, idcliente';
-    subsplits.forEach((split) => {
-      subSelect += `, ${split.select}`;
-      subGroup += `, ${split.group}`;
-      queries.push(`${baseSelect}, idcliente ${subSelect} ${baseFrom} WHERE ${baseAndClause} ${subGroup} `);
-    });
-
-    // Split on mandato
-    queries.push(`${baseSelect}, idcliente, mandato ${baseFrom} WHERE ${baseAndClause} GROUP BY idcontratto, idcliente, mandato `);
-    subSelect = '';
-    subGroup = 'GROUP BY idcontratto, idcliente, mandato';
-    subsplits.forEach((split) => {
-      subSelect += `, ${split.select}`;
-      subGroup += `, ${split.group}`;
-      queries.push(`${baseSelect}, idcliente, mandato ${subSelect} ${baseFrom} WHERE ${baseAndClause} ${subGroup} `);
+    mainSplits.forEach((mainSplit) => {
+      const groupby = `GROUP BY ${mainSplit.join(',')}`;
+      const mainq = `${baseSelect} ${baseFrom} WHERE ${baseAndClause} ${groupby}`;
+      queries.push(mainq);
+      let subSelect = '';
+      let subGroup = groupby;
+      subSplits.forEach((split) => {
+        subSelect += `, ${split.select}`;
+        subGroup += `, ${split.group}`;
+        queries.push(`${baseSelect}, idcliente ${subSelect} ${baseFrom} WHERE ${baseAndClause} ${subGroup} `);
+      });
     });
     return queries;
   }
